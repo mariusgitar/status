@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<title>Pult-status // Testpanel</title>
+<link href="https://fonts.googleapis.com/css2?family=Special+Elite&family=VT323&family=Baloo+2:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-user-select:none; user-select:none; }
+  html, body { width:100%; height:100%; overflow:hidden; }
+
+  #app { width:100%; height:100%; display:flex; flex-direction:column; }
+
+  /* ---------------- Diskre stilbryter (hjørne) ---------------- */
+  #style-switch {
+    position:fixed;
+    bottom:10px;
+    left:50%;
+    transform:translateX(-50%);
+    display:flex;
+    gap:9px;
+    padding:7px 11px;
+    border-radius:20px;
+    background:rgba(0,0,0,0.28);
+    z-index:100;
+  }
+  #style-switch .dot {
+    width:7px; height:7px;
+    border-radius:50%;
+    background:rgba(255,255,255,0.35);
+  }
+  #style-switch .dot.active { background:rgba(255,255,255,0.9); }
+  #style-switch .hit {
+    width:22px; height:22px;
+    margin:-7.5px;
+    display:flex; align-items:center; justify-content:center;
+  }
+
+  #stage { width:100%; height:100%; position:relative; overflow:hidden; }
+  .style-view { position:absolute; top:0; left:0; width:100%; height:100%; display:none; }
+  .style-view.visible { display:block; }
+
+  /* =====================================================================
+     STIL 1: MESSING-INSTRUMENT (steampunk gauge)
+     ===================================================================== */
+  .sp-root {
+    width:100%; height:100%;
+    background: radial-gradient(ellipse at 50% 30%, #2a1c11 0%, #14100a 70%);
+    font-family:'Special Elite', 'Courier New', monospace;
+    color:#ede4d3;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .sp-instrument {
+    position:relative;
+    background: linear-gradient(135deg, #7a5a2e, #4a3418 40%, #6b4a22 60%, #3a2810);
+    border-radius:24px;
+    padding:20px;
+    box-shadow:0 0 0 2px #2b1d0e, 0 10px 30px rgba(0,0,0,0.6), inset 0 2px 4px rgba(255,230,180,0.25), inset 0 -6px 10px rgba(0,0,0,0.5);
+    display:flex; flex-direction:column; align-items:center; gap:12px;
+  }
+  .sp-rivet { position:absolute; width:10px; height:10px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #d8b877, #6b4a22 70%, #2b1d0e); box-shadow:0 1px 2px rgba(0,0,0,0.6); }
+  .sp-rivet.tl{top:10px;left:10px;} .sp-rivet.tr{top:10px;right:10px;} .sp-rivet.bl{bottom:10px;left:10px;} .sp-rivet.br{bottom:10px;right:10px;}
+  .sp-gauge-face { width:260px; height:260px; border-radius:50%; background:radial-gradient(circle at 50% 50%, #f4ecd8 0%, #e5d9ba 60%, #cbb98d 100%); box-shadow:inset 0 0 0 6px #8a6a34, inset 0 0 18px rgba(0,0,0,0.35), 0 4px 10px rgba(0,0,0,0.5); position:relative; overflow:hidden; }
+  .sp-tick { position:absolute; width:4px; height:22px; background:#2b1d0e; left:50%; top:8px; transform-origin:50% 122px; }
+  .sp-tick-label { position:absolute; font-family:'Special Elite', monospace; font-size:10px; letter-spacing:0.5px; color:#3a2810; width:70px; text-align:center; left:50%; top:50%; }
+  .sp-needle { position:absolute; left:50%; top:50%; width:6px; height:108px; background:linear-gradient(#a83226, #6e1c14); border-radius:3px 3px 0 0; transform-origin:50% 100%; transition:transform 900ms cubic-bezier(.34,1.56,.64,1); box-shadow:0 0 4px rgba(0,0,0,0.5); }
+  .sp-needle::after { content:''; position:absolute; bottom:-14px; left:50%; transform:translateX(-50%); width:24px; height:24px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #d8b877, #6b4a22 70%, #2b1d0e); box-shadow:0 1px 3px rgba(0,0,0,0.6); }
+  .sp-plaque { width:260px; background:#0d0f0a; border-radius:8px; padding:10px 14px; box-shadow:inset 0 0 12px rgba(0,0,0,0.9), 0 0 0 3px #2b1d0e, 0 0 0 5px #6b4a22; text-align:center; }
+  .sp-plaque-label { font-family:'VT323', monospace; font-size:32px; letter-spacing:3px; color:#ffb000; text-shadow:0 0 8px rgba(255,176,0,0.65), 0 0 2px rgba(255,176,0,0.9); line-height:1; }
+  .sp-plaque-sub { font-family:'VT323', monospace; font-size:14px; letter-spacing:2px; color:#a86d00; margin-top:4px; }
+  .sp-levers { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; max-width:280px; }
+  .sp-lever { font-family:'Special Elite', monospace; font-size:11px; letter-spacing:0.5px; color:#ede4d3; background:linear-gradient(#5a3f20, #2f2010); border:1px solid #1a1006; border-radius:6px; padding:8px 10px; box-shadow:0 2px 0 #1a1006, inset 0 1px 0 rgba(255,255,255,0.15); }
+  .sp-lever.active { background:linear-gradient(#8a5a1a, #4a3212); color:#ffe9b3; }
+
+  /* =====================================================================
+     STIL 2: TERMINAL / CRT
+     ===================================================================== */
+  .term-root { width:100%; height:100%; background:#050a06; font-family:'VT323', monospace; display:flex; align-items:center; justify-content:center; position:relative; }
+  .term-root::after { content:''; position:absolute; top:0; left:0; right:0; bottom:0; background:repeating-linear-gradient(0deg, rgba(0,0,0,0.25) 0px, rgba(0,0,0,0.25) 1px, transparent 1px, transparent 3px); pointer-events:none; }
+  .term-box { width:320px; border:2px solid #2f6b3a; border-radius:6px; background:#081006; box-shadow:0 0 24px rgba(51,255,102,0.25), inset 0 0 30px rgba(0,0,0,0.6); padding:16px 18px 20px; color:#33ff66; }
+  .term-title { font-size:16px; letter-spacing:2px; border-bottom:1px dashed #2f6b3a; padding-bottom:8px; margin-bottom:12px; display:flex; justify-content:space-between; color:#8fffab; }
+  .term-boot { font-size:14px; color:#1f8a3d; margin-bottom:2px; }
+  .term-status-block { margin:18px 0 6px; text-align:center; }
+  .term-status-text { font-size:44px; letter-spacing:3px; text-shadow:0 0 8px rgba(51,255,102,0.8), 0 0 2px rgba(51,255,102,1); line-height:1; }
+  .term-status-sub { font-size:18px; color:#1f8a3d; margin-top:6px; }
+  .term-cursor { display:inline-block; width:10px; height:20px; background:#33ff66; margin-left:6px; animation:term-blink 1s steps(1) infinite; vertical-align:middle; }
+  @keyframes term-blink { 50% { opacity:0; } }
+  .term-menu { border-top:1px dashed #2f6b3a; padding-top:10px; font-size:18px; }
+  .term-menu-item { padding:3px 0; color:#1f8a3d; }
+  .term-menu-item.active { color:#33ff66; text-shadow:0 0 6px rgba(51,255,102,0.7); }
+  .term-menu-item .term-arrow { display:inline-block; width:16px; }
+
+  /* =====================================================================
+     STIL 3: SPLIT-FLAP TAVLE
+     ===================================================================== */
+  .flap-root { width:100%; height:100%; background:#141414; font-family:'Courier New', monospace; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:20px; }
+  .flap-board { background:#0c0c0c; border-radius:10px; padding:20px 16px; box-shadow:0 12px 26px rgba(0,0,0,0.6), inset 0 0 0 3px #2a2a2a; display:flex; gap:6px; }
+  .flap-tile { width:38px; height:56px; background:#1c1c1c; border-radius:3px; position:relative; box-shadow:inset 0 0 0 1px #333; overflow:hidden; }
+  .flap-tile::after { content:''; position:absolute; left:0; right:0; top:50%; height:1px; background:rgba(0,0,0,0.7); z-index:2; }
+  .flap-letter { position:absolute; top:0; left:0; right:0; bottom:0; display:flex; align-items:center; justify-content:center; font-size:34px; font-weight:bold; color:#e8a33d; background:#1c1c1c; transition:transform 260ms ease-in; transform-origin:center center; }
+  .flap-tile.flipping .flap-letter { transform:rotateX(90deg); }
+  .flap-sub { font-size:14px; letter-spacing:3px; color:#8a8a8a; text-transform:uppercase; }
+  .flap-plate { font-size:11px; letter-spacing:2px; color:#555; }
+  .flap-buttons { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; max-width:300px; }
+  .flap-btn { font-family:'Courier New', monospace; font-size:12px; letter-spacing:1px; color:#e8a33d; background:#1c1c1c; border:1px solid #333; border-radius:4px; padding:8px 10px; }
+  .flap-btn.active { background:#e8a33d; color:#141414; }
+
+  /* =====================================================================
+     STIL 4: ROBOT / KAWAII
+     ===================================================================== */
+  .bot-root { width:100%; height:100%; display:flex; align-items:center; justify-content:center; font-family:'Baloo 2', sans-serif; transition:background 500ms ease; }
+  .bot-scene { display:flex; flex-direction:column; align-items:center; gap:16px; }
+  .bot-bubble { background:#fff; border-radius:18px; padding:10px 20px; font-size:20px; font-weight:700; color:#3a3a3a; box-shadow:0 4px 0 rgba(0,0,0,0.08); position:relative; }
+  .bot-bubble::after { content:''; position:absolute; bottom:-10px; left:50%; transform:translateX(-50%); border-width:10px 8px 0 8px; border-style:solid; border-color:#fff transparent transparent transparent; }
+  .bot-bubble-sub { font-size:12px; font-weight:600; color:#999; text-align:center; margin-top:-8px; }
+  .bot-robot { width:180px; height:200px; position:relative; animation:bot-bob 3s ease-in-out infinite; }
+  @keyframes bot-bob { 0%,100% { transform:translateY(0); } 50% { transform:translateY(-8px); } }
+  .bot-antenna { position:absolute; top:-22px; left:50%; transform:translateX(-50%); width:4px; height:22px; background:#c9c9c9; }
+  .bot-antenna-ball { position:absolute; top:-30px; left:50%; transform:translateX(-50%); width:14px; height:14px; border-radius:50%; background:var(--accent,#6bcf7f); box-shadow:0 0 10px var(--accent,#6bcf7f); }
+  .bot-head { width:160px; height:120px; background:#f4f4f4; border-radius:34px; box-shadow:inset 0 -6px 0 rgba(0,0,0,0.05), 0 6px 0 rgba(0,0,0,0.08); position:relative; margin:10px auto 0; }
+  .bot-screen { position:absolute; top:26px; left:20px; right:20px; bottom:26px; background:var(--accent,#6bcf7f); border-radius:18px; display:flex; align-items:center; justify-content:center; gap:22px; transition:background 400ms ease; }
+  .bot-eye { width:16px; height:16px; background:#fff; border-radius:50%; }
+  .bot-body-base { width:100px; height:44px; background:#f4f4f4; border-radius:0 0 24px 24px; margin:0 auto; box-shadow:inset 0 -4px 0 rgba(0,0,0,0.05); }
+  .bot-buttons { display:flex; gap:10px; flex-wrap:wrap; justify-content:center; max-width:300px; }
+  .bot-btn { font-family:'Baloo 2', sans-serif; font-weight:700; font-size:13px; color:#555; background:#fff; border:none; border-radius:14px; padding:9px 14px; box-shadow:0 3px 0 rgba(0,0,0,0.08); }
+  .bot-btn.active { color:#fff; background:var(--accent, #6bcf7f); }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <div id="stage">
+
+    <div class="style-view" id="view-steampunk">
+      <div class="sp-root">
+        <div class="sp-instrument">
+          <span class="sp-rivet tl"></span><span class="sp-rivet tr"></span>
+          <span class="sp-rivet bl"></span><span class="sp-rivet br"></span>
+          <div class="sp-gauge-face" id="spGaugeFace">
+            <div class="sp-needle" id="spNeedle"></div>
+          </div>
+          <div class="sp-plaque">
+            <div class="sp-plaque-label" id="spLabel">LEDIG</div>
+            <div class="sp-plaque-sub" id="spSub">DØRA STÅR ÅPEN</div>
+          </div>
+          <div class="sp-levers" id="spLevers"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="style-view" id="view-terminal">
+      <div class="term-root">
+        <div class="term-box">
+          <div class="term-title"><span>STATUS.SYS</span><span>v0.9</span></div>
+          <div class="term-boot">&gt; PULT-OVERVÅKING AKTIV_</div>
+          <div class="term-boot">&gt; SENSOR OK // LINK OK</div>
+          <div class="term-status-block">
+            <div class="term-status-text" id="termText">LEDIG<span class="term-cursor"></span></div>
+            <div class="term-status-sub" id="termSub">DØRA STÅR ÅPEN</div>
+          </div>
+          <div class="term-menu" id="termMenu"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="style-view" id="view-flap">
+      <div class="flap-root">
+        <div class="flap-board" id="flapBoard"></div>
+        <div class="flap-sub" id="flapSub">DØRA STÅR ÅPEN</div>
+        <div class="flap-buttons" id="flapButtons"></div>
+        <div class="flap-plate">AVGANGSTAVLE MODELL 61</div>
+      </div>
+    </div>
+
+    <div class="style-view" id="view-robot">
+      <div class="bot-root" id="botRoot">
+        <div class="bot-scene">
+          <div class="bot-bubble"><div id="botText">Klar for prat!</div></div>
+          <div class="bot-bubble-sub" id="botSub">TILGJENGELIG</div>
+          <div class="bot-robot">
+            <div class="bot-antenna"></div>
+            <div class="bot-antenna-ball" id="botAntenna"></div>
+            <div class="bot-head">
+              <div class="bot-screen" id="botScreen">
+                <div class="bot-eye" id="botEyeL"></div>
+                <div class="bot-eye" id="botEyeR"></div>
+              </div>
+            </div>
+            <div class="bot-body-base"></div>
+          </div>
+          <div class="bot-buttons" id="botButtons"></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <div id="style-switch"></div>
+</div>
+
+<script>
+  // ---------------- Felles modusdata ----------------
+  var MODES = [
+    { key:'fokus', label:'FOKUS', sub:'OPTIMALISERER FLOW …', spAngle:-72, spTick:'FOKUS',
+      accent:'#e8555a', bg:'#fdeceb', eyeShape:'2px', botLine:'Shh, konsentrerer meg!' },
+    { key:'tilgjengelig', label:'LEDIG', sub:'DØRA STÅR ÅPEN', spAngle:-36, spTick:'LEDIG',
+      accent:'#6bcf7f', bg:'#eaf6f0', eyeShape:'50%', botLine:'Klar for prat!' },
+    { key:'mote', label:'MOTE', sub:'ANGIVELIG PRODUKTIV MØTE', spAngle:0, spTick:'MØTE',
+      accent:'#f2b134', bg:'#fdf5e6', eyeShape:'50% 50% 0 0', botLine:'Snakker med noen!' },
+    { key:'pause', label:'PAUSE', sub:'PÅFYLL AV KAFFE PÅGÅR', spAngle:36, spTick:'PAUSE',
+      accent:'#7fb8e0', bg:'#eaf3fb', eyeShape:'50%', botLine:'Strekker litt på beina' },
+    { key:'borte', label:'BORTE', sub:'LOGGET AV FOR DAGEN', spAngle:72, spTick:'BORTE',
+      accent:'#a98bd0', bg:'#f2ecfa', eyeShape:'0', botLine:'Ses i morgen!' }
+  ];
+
+  var STYLES = [
+    { key:'steampunk', label:'Messing' },
+    { key:'terminal', label:'Terminal' },
+    { key:'flap', label:'Tavle' },
+    { key:'robot', label:'Robot' }
+  ];
+
+  var currentMode = 'tilgjengelig';
+  var currentStyle = 'steampunk';
+
+  // ---------------- Diskre stilbryter (prikker nederst) ----------------
+  var styleSwitch = document.getElementById('style-switch');
+
+  STYLES.forEach(function(s){
+    var hit = document.createElement('div');
+    hit.className = 'hit';
+    hit.setAttribute('data-style', s.key);
+    var dot = document.createElement('div');
+    dot.className = 'dot';
+    hit.appendChild(dot);
+    hit.onclick = function(){ setStyle(this.getAttribute('data-style')); };
+    styleSwitch.appendChild(hit);
+  });
+
+  function refreshStyleDots(){
+    var hits = styleSwitch.querySelectorAll('.hit');
+    for (var i=0;i<hits.length;i++){
+      var dot = hits[i].querySelector('.dot');
+      dot.className = hits[i].getAttribute('data-style')===currentStyle ? 'dot active' : 'dot';
+    }
+  }
+
+  function setStyle(key){
+    currentStyle = key;
+    var views = document.querySelectorAll('.style-view');
+    for (var i=0;i<views.length;i++){ views[i].className = 'style-view'; }
+    document.getElementById('view-' + key).className = 'style-view visible';
+    refreshStyleDots();
+  }
+
+  // ---------------- STIL 1: Messing-gauge oppsett ----------------
+  var spGaugeFace = document.getElementById('spGaugeFace');
+  var spNeedle = document.getElementById('spNeedle');
+  var spLabel = document.getElementById('spLabel');
+  var spSub = document.getElementById('spSub');
+
+  MODES.forEach(function(m){
+    var tick = document.createElement('div');
+    tick.className = 'sp-tick';
+    tick.style.transform = 'translateX(-50%) rotate(' + m.spAngle + 'deg)';
+    spGaugeFace.appendChild(tick);
+
+    var label = document.createElement('div');
+    label.className = 'sp-tick-label';
+    label.textContent = m.spTick;
+    var rad = (m.spAngle - 90) * Math.PI / 180;
+    var r = 92;
+    var x = 130 + r * Math.cos(rad);
+    var y = 130 + r * Math.sin(rad);
+    label.style.left = (x - 35) + 'px';
+    label.style.top = (y - 6) + 'px';
+    spGaugeFace.appendChild(label);
+  });
+
+  var spLevers = document.getElementById('spLevers');
+  MODES.forEach(function(m){
+    var b = document.createElement('div');
+    b.className = 'sp-lever';
+    b.setAttribute('data-key', m.key);
+    b.textContent = m.spTick;
+    b.onclick = function(){ setMode(this.getAttribute('data-key')); };
+    spLevers.appendChild(b);
+  });
+
+  // ---------------- STIL 2: Terminal-meny oppsett ----------------
+  var termMenu = document.getElementById('termMenu');
+  MODES.forEach(function(m){
+    var item = document.createElement('div');
+    item.className = 'term-menu-item';
+    item.setAttribute('data-key', m.key);
+    item.innerHTML = '<span class="term-arrow"></span>' + m.label;
+    item.onclick = function(){ setMode(this.getAttribute('data-key')); };
+    termMenu.appendChild(item);
+  });
+
+  // ---------------- STIL 3: Split-flap oppsett ----------------
+  var FLAP_WIDTH = 6;
+  var flapBoard = document.getElementById('flapBoard');
+  var flapSub = document.getElementById('flapSub');
+  var flapLetters = [];
+
+  for (var i=0;i<FLAP_WIDTH;i++){
+    var tile = document.createElement('div');
+    tile.className = 'flap-tile';
+    var letter = document.createElement('div');
+    letter.className = 'flap-letter';
+    letter.textContent = ' ';
+    tile.appendChild(letter);
+    flapBoard.appendChild(tile);
+    flapLetters.push(letter);
+  }
+
+  var flapButtons = document.getElementById('flapButtons');
+  MODES.forEach(function(m){
+    var b = document.createElement('div');
+    b.className = 'flap-btn';
+    b.setAttribute('data-key', m.key);
+    b.textContent = m.label;
+    b.onclick = function(){ setMode(this.getAttribute('data-key')); };
+    flapButtons.appendChild(b);
+  });
+
+  function padLabel(label){
+    var padded = label;
+    while (padded.length < FLAP_WIDTH) padded += ' ';
+    return padded.slice(0, FLAP_WIDTH);
+  }
+
+  // ---------------- STIL 4: Robot oppsett ----------------
+  var botRoot = document.getElementById('botRoot');
+  var botScreen = document.getElementById('botScreen');
+  var botAntenna = document.getElementById('botAntenna');
+  var botEyeL = document.getElementById('botEyeL');
+  var botEyeR = document.getElementById('botEyeR');
+  var botText = document.getElementById('botText');
+  var botSub = document.getElementById('botSub');
+
+  var botButtons = document.getElementById('botButtons');
+  MODES.forEach(function(m){
+    var b = document.createElement('div');
+    b.className = 'bot-btn';
+    b.setAttribute('data-key', m.key);
+    b.textContent = m.label;
+    b.style.setProperty('--accent', m.accent);
+    b.onclick = function(){ setMode(this.getAttribute('data-key')); };
+    botButtons.appendChild(b);
+  });
+
+  // ---------------- Global modus-oppdatering ----------------
+  function setMode(key){
+    var m = MODES.filter(function(x){ return x.key===key; })[0];
+    if(!m) return;
+    currentMode = key;
+
+    // Stil 1
+    spNeedle.style.transform = 'translate(-50%, -100%) rotate(' + m.spAngle + 'deg)';
+    spLabel.textContent = m.label;
+    spSub.textContent = m.sub;
+
+    // Stil 2
+    document.getElementById('termText').innerHTML = m.label + '<span class="term-cursor"></span>';
+    document.getElementById('termSub').textContent = m.sub;
+
+    // Stil 3
+    var padded = padLabel(m.label);
+    flapLetters.forEach(function(letterEl, idx){
+      var tileEl = letterEl.parentElement;
+      setTimeout(function(){
+        tileEl.className = 'flap-tile flipping';
+        setTimeout(function(){
+          letterEl.textContent = padded[idx];
+          tileEl.className = 'flap-tile';
+        }, 260);
+      }, idx * 70);
+    });
+    flapSub.textContent = m.sub;
+
+    // Stil 4
+    botRoot.style.background = m.bg;
+    botScreen.style.setProperty('--accent', m.accent);
+    botAntenna.style.setProperty('--accent', m.accent);
+    botEyeL.style.borderRadius = m.eyeShape;
+    botEyeR.style.borderRadius = m.eyeShape;
+    botText.textContent = m.botLine;
+    botSub.textContent = m.label;
+
+    // Aktiv-tilstand på alle fire knappesett
+    setActive(spLevers, '.sp-lever', key);
+    setActive(termMenu, '.term-menu-item', key, function(el, isActive){
+      var arrow = el.querySelector('.term-arrow');
+      if (arrow) arrow.textContent = isActive ? '>' : '';
+    });
+    setActive(flapButtons, '.flap-btn', key);
+    setActive(botButtons, '.bot-btn', key);
+  }
+
+  function setActive(container, selector, key, extra){
+    var items = container.querySelectorAll(selector);
+    for (var i=0;i<items.length;i++){
+      var isActive = items[i].getAttribute('data-key') === key;
+      var base = selector.replace('.', '');
+      items[i].className = isActive ? base + ' active' : base;
+      if (extra) extra(items[i], isActive);
+    }
+  }
+
+  // ---------------- Init ----------------
+  setStyle('steampunk');
+  setMode('tilgjengelig');
+</script>
+</body>
+</html>
